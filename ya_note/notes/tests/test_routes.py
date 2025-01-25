@@ -88,7 +88,3 @@ class TestRoutes(TestCase):
                 response = self.client.get(url)
                 redirect_url = f'{login_url}?next={url}'
                 self.assertRedirects(response, redirect_url)
-
-
-
-

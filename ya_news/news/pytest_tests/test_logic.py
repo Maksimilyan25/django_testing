@@ -9,6 +9,7 @@ from http import HTTPStatus
 from news.models import Comment
 from news.forms import WARNING, BAD_WORDS
 
+
 @pytest.mark.django_db
 def test_cant_add_comment_anonymous(client, form_data, news):
     """Тест, аноним не может отправить комментарий."""
@@ -31,6 +32,7 @@ def test_can_add_comment_users(author, author_client, form_data, news):
     assert new_comment.text == form_data['text']
     assert new_comment.author == author
 
+
 def test_bad_words_and_warning_in_comment(not_author_client, form_data, news):
     """Тест, что комментарий с плохими словами не проходит валидацию."""
     form_data['text'] = BAD_WORDS
@@ -41,9 +43,7 @@ def test_bad_words_and_warning_in_comment(not_author_client, form_data, news):
     assert WARNING in response.context['form'].errors['text']
 
 
-def test_users_can_edit_comment(
-        author_client, form_data, news, comment
-        ):
+def test_users_can_edit_comment(author_client, form_data, news, comment):
     """Тест, авторы могут редактировать комментарии."""
     url = reverse('news:edit', args=(news.pk,))
     response = author_client.post(url, form_data)

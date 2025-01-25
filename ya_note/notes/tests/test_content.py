@@ -8,6 +8,7 @@ from django.utils.text import slugify
 
 User = get_user_model()
 
+
 class TestHomePage(TestCase):
 
     @classmethod

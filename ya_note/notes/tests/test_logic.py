@@ -5,7 +5,6 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils.text import slugify
 
-from notes.forms import WARNING
 from notes.models import Note
 
 User = get_user_model()
@@ -29,7 +28,7 @@ class TestNoteCreate(TestCase):
         cls.form_data = {
             'text': cls.NOTE_TEXT,
             'title': 'Обновлённый заголовок'
-            }
+        }
 
     def test_anonymous_note(self):
         """Тест, аноним не может создать заметку."""
