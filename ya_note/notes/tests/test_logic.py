@@ -76,7 +76,7 @@ class TestNoteEditDelete(TestCase):
             slug=slugify('Заголовок 1')
         )
         # получаем адрес заметки.
-        note_url = reverse('notes:detail', args=(cls.note.slug,))
+        cls.note_url = reverse('notes:detail', args=(cls.note.slug,))
         # создаем клиент для автора.
         cls.author_client = Client()
         # логиним автора заметки.
