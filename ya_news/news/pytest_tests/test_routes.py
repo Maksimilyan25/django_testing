@@ -1,45 +1,25 @@
-from http import HTTPStatus
-
+from django.urls import reverse
+from pytest_django.asserts import assertRedirects
 import pytest
 
-from pytest_django.asserts import assertRedirects
 
-from django.urls import reverse
-
-
-@pytest.mark.parametrize(
-    'name',  # Имя параметра функции.
-    # Значения, которые будут передаваться в name.
-    ('news:home', 'users:login', 'users:logout', 'users:signup')
-)
-@pytest.mark.django_db
-def test_pages_availability_for_anonymous_user(client, name):
-    """Анониму доступна главная страница и авторизация."""
-    url = reverse(name)
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.parametrize(
-    'url_name',
-    ('news:detail',)
-)
-def test_detail_pages_for_anonymous(client, url_name, news):
-    """Аноним, может просматривать детально новости."""
-    url = reverse(url_name, args=(news.pk,))
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+def test_anonymous_user_access(anonymous_routes, news):
+    """Тест доступности страниц для анонимного пользователя."""
+    for route, users, status in anonymous_routes:
+        url = reverse(route, args=(news.pk,) if route == 'news:detail' else [])
+        response = users.get(url)
+        assert response.status_code == status
 
 
-@pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete',)
-)
-def test_comment_edit_and_del_for_author(author_client, name, comment):
-    """Страница для автора, может ред. и удалять свои комментарии."""
-    url = reverse(name, args=(comment.id,))
-    response = author_client.get(url)
-    assert response.status_code == HTTPStatus.OK
+def test_comment_edit_and_del(client_routes, comment):
+    """Тест страницы для редактирования и удаления комментариев."""
+    for name, users, status in client_routes:
+        url = reverse(name, args=(comment.id,))
+        response = users.get(url)
+        assert response.status_code == status
 
 
 @pytest.mark.parametrize(
@@ -53,14 +33,3 @@ def test_redirect_anonymous_cant_edit_and_del_comment(client, name, comment):
     expected_url = f'{login_url}?next={url}'
     response = client.get(url)
     assertRedirects(response, expected_url)
-
-
-@pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete',)
-)
-def test_not_author_cant_del_idet_comment(not_author_client, name, comment):
-    """Тест страницы, юзер не может удалять и ред. чужие комменты."""
-    url = reverse(name, args=(comment.id,))
-    response = not_author_client.get(url)
-    assert response.status_code == HTTPStatus.NOT_FOUND

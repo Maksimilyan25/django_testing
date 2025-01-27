@@ -1,9 +1,10 @@
-import pytest
+from http import HTTPStatus
 
 from datetime import datetime, timedelta
 
+import pytest
 from django.test.client import Client
-
+from django.conf import settings
 
 from news.models import News, Comment
 
@@ -16,16 +17,15 @@ def author(django_user_model):
 
 @pytest.fixture
 def not_author(django_user_model):
-    """Фикстура анонима."""
+    """Фикстура пользователя."""
     return django_user_model.objects.create(username='Не автор')
 
 
 @pytest.fixture
 def author_client(author):
     """Фикстура залогиненного автора."""
-    # Создаём новый экземпляр клиента, чтобы не менять глобальный.
     client = Client()
-    client.force_login(author)  # Логиним автора в клиенте.
+    client.force_login(author)
     return client
 
 
@@ -61,37 +61,61 @@ def comment(news, author):
 @pytest.fixture
 def create_news(db):
     """Фикстура для создания нескольких новостей."""
-    news_list = []
     today = datetime.today()
-    for index in range(11):  # Создаем 11 новостей
-        news_item = News.objects.create(
+    for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1):
+        News.objects.create(
             title=f'Новость {index}',
             text=f'текст {index}',
             date=today - timedelta(days=index)
         )
-        news_list.append(news_item)
-    return news_list
 
 
 @pytest.fixture
 def create_comments(news, author):
     """Фикстура для создания нескольких комментов."""
-    news_list = []
     today = datetime.today()
     for index in range(5):
-        comment_item = Comment.objects.create(
+        Comment.objects.create(
             text=f'текст {index}',
-            created=today + timedelta(days=index),
             news=news,
             author=author
         )
-        news_list.append(comment_item)
-    return news_list
+        comment.created = today + timedelta(days=index)
 
 
 @pytest.fixture
-def form_data():
-    """создание формы."""
-    return {
-        'text': 'текст'
-    }
+def all_routes():
+    """Фикстура всех адресов."""
+    return [
+        'news:home',
+        'news:detail',
+        'news:edit',
+        'news:delete',
+        'users:login',
+        'users:logout',
+        'users:signup'
+    ]
+
+
+@pytest.fixture
+def anonymous_routes(client):
+    """Адреса для анонима."""
+    return (
+        ('news:home', client, HTTPStatus.OK),
+        ('users:login', client, HTTPStatus.OK),
+        ('users:logout', client, HTTPStatus.OK),
+        ('users:signup', client, HTTPStatus.OK),
+        ('news:detail', client, HTTPStatus.OK),
+    )
+
+
+@pytest.fixture
+def client_routes(author_client, not_author_client):
+    """Адреса для клиента."""
+    """Фикстура для маршрутов, клиентов и ожидаемых статусов."""
+    return (
+        ('news:edit', author_client, HTTPStatus.OK),
+        ('news:delete', author_client, HTTPStatus.OK),
+        ('news:edit', not_author_client, HTTPStatus.NOT_FOUND),
+        ('news:delete', not_author_client, HTTPStatus.NOT_FOUND),
+    )

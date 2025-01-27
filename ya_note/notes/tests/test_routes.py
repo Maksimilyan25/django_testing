@@ -1,44 +1,22 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
-from django.utils.text import slugify
-from notes.models import Note
+
+from .test_fixtures import BaseTestSetUp
 
 
 User = get_user_model()
 
 
-class TestRoutes(TestCase):
+class TestRoutes(BaseTestSetUp):
     """Класс тестирования маршрутов."""
-
-    @classmethod
-    def setUpTestData(cls):
-        """Фикстуры для тестов."""
-        cls.author = User.objects.create(username='Васька')  # автор
-        cls.reader = User.objects.create(username='Ноунейм')  # пользователь
-        cls.notes = Note.objects.create(
-            # фикстура заметки.
-            title='Заголовок 1',
-            text='Текст 1',
-            author=cls.author,
-            slug=slugify('Заголовок 1')
-        )
 
     def test_pages(self):
         """Тест главной страницы и авторизации."""
-        urls = (
-            ('notes:home', None),
-            ('notes:detail', self.notes.slug),
-            ('users:login', None),
-            ('users:logout', None),
-            ('users:signup', None),
-        )
-        for name, args in urls:
-            self.client.force_login(self.author)
+        for name, url in self.urls.items():
+            self.login_author()
             with self.subTest(name=name):
-                url = reverse(name, args=args)
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
@@ -52,39 +30,23 @@ class TestRoutes(TestCase):
             self.client.force_login(user)
             for name in ('notes:detail', 'notes:edit', 'notes:delete'):
                 with self.subTest(user=user, name=name):
-                    url = reverse(name, args=(self.notes.id,))
+                    url = reverse(name, args=(self.notes.slug,))
                     response = self.client.get(url)
                     self.assertEqual(response.status_code, status)
 
     def test_pages_list_add_done(self):
         """Тест страниц для добавления, списка, успешного добавления."""
-        self.client.force_login(self.author)
-        urls = (
-            ('notes:add', None),
-            ('notes:success', None),
-            ('notes:list', None),
-        )
-        for name, args in urls:
+        self.login_author()
+        for name, url in self.urls.items():
             with self.subTest(name=name):
-                url = reverse(name, args=args)
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_redirect_anonymous_user(self):
         """Тест на редирект анонима."""
-        urls = (
-            ('notes:list', None),
-            ('notes:add', None),
-            ('notes:success', None),
-            ('notes:detail', self.notes.slug),
-            ('notes:edit', self.notes.slug),
-            ('notes:delete', self.notes.slug),
-        )
         login_url = reverse('users:login')
-
-        for name, args in urls:
+        for name, url in self.urls.items():
             with self.subTest(name=name):
-                url = reverse(name, args=args)
                 response = self.client.get(url)
                 redirect_url = f'{login_url}?next={url}'
                 self.assertRedirects(response, redirect_url)

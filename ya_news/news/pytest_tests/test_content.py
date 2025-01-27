@@ -1,31 +1,30 @@
-import pytest
-
 from http import HTTPStatus
 
 from django.urls import reverse
+from django.conf import settings
 
 from news.forms import CommentForm
 
+import pytest
 
-HOME_PAGES = 10
+
+pytestmark = pytest.mark.django_db
 
 
-def test_pages_paginator(client, create_news):
+def test_pages_paginator(client, all_routes, create_news):
     """Тест количества новостей на странице."""
-    url = reverse('news:home')
+    url = reverse(all_routes[0])
     response = client.get(url)
-
+    news_count = len(response.context['object_list'])
     assert response.status_code == HTTPStatus.OK
-    # Проверим, что на странице не более 10 новостей
-    assert len(response.context['news_list']) <= HOME_PAGES
+    assert news_count <= settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-def test_order_news_on_page(client, create_news):
+def test_order_news_on_page(client, all_routes, create_news):
     """Тест, сортировка новостей по убыванию."""
-    url = reverse('news:home')
+    url = reverse(all_routes[0])
     response = client.get(url)
-    object_list = response.context['object_list']
-    all_dates = [news.date for news in object_list]
+    all_dates = [news.date for news in response.context['object_list']]
     sorted_dates = sorted(all_dates, reverse=True)
     assert response.status_code == HTTPStatus.OK
     assert all_dates == sorted_dates
