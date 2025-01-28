@@ -1,12 +1,14 @@
+from datetime import datetime, timedelta
 from http import HTTPStatus
 
-from datetime import datetime, timedelta
 
 import pytest
 from django.test.client import Client
 from django.conf import settings
+from django.utils import timezone
+from django.urls import reverse
 
-from news.models import News, Comment
+from news.models import Comment, News
 
 
 @pytest.fixture
@@ -61,6 +63,7 @@ def comment(news, author):
 @pytest.fixture
 def create_news(db):
     """Фикстура для создания нескольких новостей."""
+    News.objects.all().delete()
     today = datetime.today()
     for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1):
         News.objects.create(
@@ -73,49 +76,74 @@ def create_news(db):
 @pytest.fixture
 def create_comments(news, author):
     """Фикстура для создания нескольких комментов."""
-    today = datetime.today()
+    now = timezone.now()
     for index in range(5):
-        Comment.objects.create(
-            text=f'текст {index}',
+        comment = Comment.objects.create(
             news=news,
-            author=author
+            author=author,
+            text=f'Comment text number {index}'
         )
-        comment.created = today + timedelta(days=index)
+        comment.created = now + timedelta(days=index)
+        comment.save()
 
 
 @pytest.fixture
-def all_routes():
+def routes_for_paginator():
+    return {
+        'home': reverse('news:home')
+    }
+
+
+@pytest.fixture
+def all_routes(news):
     """Фикстура всех адресов."""
-    return [
-        'news:home',
-        'news:detail',
-        'news:edit',
-        'news:delete',
-        'users:login',
-        'users:logout',
-        'users:signup'
-    ]
+    return {
+        'home': reverse('news:home'),
+        'detail': reverse('news:detail', args=(news.pk,)),
+        'edit': reverse('news:edit', args=(news.pk,)),
+        'delete': reverse('news:delete', args=(news.pk,)),
+        'login': reverse('users:login'),
+        'logout': reverse('users:logout'),
+        'signup': reverse('users:signup'),
+    }
 
 
 @pytest.fixture
-def anonymous_routes(client):
-    """Адреса для анонима."""
-    return (
-        ('news:home', client, HTTPStatus.OK),
-        ('users:login', client, HTTPStatus.OK),
-        ('users:logout', client, HTTPStatus.OK),
-        ('users:signup', client, HTTPStatus.OK),
-        ('news:detail', client, HTTPStatus.OK),
-    )
+def anonymous_routes(news, comment):
+    """Возвращает список адресов для анонимного пользователя."""
+    return {
+        'news:home': (None, HTTPStatus.OK),
+        'users:login': (None, HTTPStatus.OK),
+        'users:logout': (None, HTTPStatus.OK),
+        'users:signup': (None, HTTPStatus.OK),
+        'news:detail': ([news.pk], HTTPStatus.OK),
+        'news:edit': ([comment.id], HTTPStatus.OK),
+        'news:delete': ([comment.id], HTTPStatus.OK),
+    }
 
 
 @pytest.fixture
-def client_routes(author_client, not_author_client):
-    """Адреса для клиента."""
+def client_routes(author_client, not_author_client, comment):
     """Фикстура для маршрутов, клиентов и ожидаемых статусов."""
     return (
-        ('news:edit', author_client, HTTPStatus.OK),
-        ('news:delete', author_client, HTTPStatus.OK),
-        ('news:edit', not_author_client, HTTPStatus.NOT_FOUND),
-        ('news:delete', not_author_client, HTTPStatus.NOT_FOUND),
+        ((reverse('news:edit', args=(comment.id,))),
+         author_client, HTTPStatus.OK),
+        ((reverse('news:delete', args=(comment.id,))),
+         author_client, HTTPStatus.OK),
+        ((reverse('news:edit', args=(comment.id,))),
+         not_author_client, HTTPStatus.NOT_FOUND),
+        ((reverse('news:delete', args=(comment.id,))),
+         not_author_client, HTTPStatus.NOT_FOUND),
     )
+
+
+@pytest.fixture
+def redirect_del_comment(comment):
+    url = reverse('news:delete', args=[comment.pk])
+    return url
+
+
+@pytest.fixture
+def redirect_edit_comment(comment):
+    url = reverse('news:edit', args=[comment.pk])
+    return url

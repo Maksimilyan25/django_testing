@@ -14,37 +14,34 @@ class TestRoutes(BaseTestSetUp):
 
     def test_pages(self):
         """Тест главной страницы и авторизации."""
-        for name, url in self.urls.items():
-            self.login_author()
-            with self.subTest(name=name):
+        for url in self.auth_and_home_urls:
+            with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_pages_edit_and_delete(self):
         """Тест страницы редактирования и удаления."""
         users_status = (
-            (self.author, HTTPStatus.OK),
-            (self.reader, HTTPStatus.NOT_FOUND),
+            (self.author_client, HTTPStatus.OK),
+            (self.user_client, HTTPStatus.NOT_FOUND),
         )
-        for user, status in users_status:
-            self.client.force_login(user)
+        for client, status in users_status:
             for name in ('notes:detail', 'notes:edit', 'notes:delete'):
-                with self.subTest(user=user, name=name):
+                with self.subTest(client=client, name=name):
                     url = reverse(name, args=(self.notes.slug,))
-                    response = self.client.get(url)
+                    response = client.get(url)
                     self.assertEqual(response.status_code, status)
 
     def test_pages_list_add_done(self):
         """Тест страниц для добавления, списка, успешного добавления."""
-        self.login_author()
         for name, url in self.urls.items():
             with self.subTest(name=name):
-                response = self.client.get(url)
+                response = self.author_client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_redirect_anonymous_user(self):
         """Тест на редирект анонима."""
-        login_url = reverse('users:login')
+        login_url = self.auth_and_home_urls[1]
         for name, url in self.urls.items():
             with self.subTest(name=name):
                 response = self.client.get(url)

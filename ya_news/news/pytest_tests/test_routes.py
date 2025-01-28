@@ -1,35 +1,41 @@
+import pytest
+from django.test.client import Client
 from django.urls import reverse
 from pytest_django.asserts import assertRedirects
-import pytest
 
 
 pytestmark = pytest.mark.django_db
 
+CLIENT = Client()
 
-def test_anonymous_user_access(anonymous_routes, news):
+
+@pytest.mark.parametrize('route_name, user_client', [
+    ('news:home', CLIENT),
+    ('users:login', CLIENT),
+    ('users:logout', CLIENT),
+    ('users:signup', CLIENT),
+    ('news:detail', CLIENT),
+    ('news:edit', pytest.lazy_fixture('author_client')),
+    ('news:delete', pytest.lazy_fixture('author_client')),
+])
+def test_anonymous_user_access(route_name, user_client, anonymous_routes):
     """Тест доступности страниц для анонимного пользователя."""
-    for route, users, status in anonymous_routes:
-        url = reverse(route, args=(news.pk,) if route == 'news:detail' else [])
-        response = users.get(url)
-        assert response.status_code == status
-
-
-def test_comment_edit_and_del(client_routes, comment):
-    """Тест страницы для редактирования и удаления комментариев."""
-    for name, users, status in client_routes:
-        url = reverse(name, args=(comment.id,))
-        response = users.get(url)
-        assert response.status_code == status
+    args, expected_status = anonymous_routes[route_name]
+    url = reverse(route_name, args=args)
+    response = user_client.get(url)
+    assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete',)
+    'url',
+    [
+        (pytest.lazy_fixture('redirect_edit_comment')),
+        (pytest.lazy_fixture('redirect_del_comment')),
+    ]
 )
-def test_redirect_anonymous_cant_edit_and_del_comment(client, name, comment):
+def test_redirect_anonymous_cant_edit_and_del_comment(client, all_routes, url):
     """Редирект анонима на страницу авторизации."""
-    url = reverse(name, args=(comment.id,))
-    login_url = reverse('users:login')
+    login_url = all_routes['login']
     expected_url = f'{login_url}?next={url}'
     response = client.get(url)
     assertRedirects(response, expected_url)

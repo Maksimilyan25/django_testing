@@ -1,7 +1,5 @@
 from http import HTTPStatus
 
-from django.urls import reverse
-
 import pytest
 from pytest_django.asserts import assertRedirects
 
@@ -19,12 +17,12 @@ FORM_BAD_WORDS = {
 pytestmark = pytest.mark.django_db
 
 
-def test_cant_add_comment_anonymous(client, all_routes, news):
+def test_cant_add_comment_anonymous(client, all_routes):
     """Тест, аноним не может отправить комментарий."""
-    url = reverse(all_routes[1], args=(news.pk,))
+    url = all_routes['detail']
     first_comment_count = Comment.objects.count()
     response = client.post(url, data=FORM_DATA)
-    login_url = reverse('users:login')
+    login_url = all_routes['login']
     expected_login = f'{login_url}?next={url}'
     assertRedirects(response, expected_login)
     assert Comment.objects.count() == first_comment_count
@@ -32,7 +30,8 @@ def test_cant_add_comment_anonymous(client, all_routes, news):
 
 def test_can_add_comment_users(author, author_client, all_routes, news):
     """тест, что юзеры и автор могут отправить комментарий."""
-    url = reverse(all_routes[1], args=(news.pk,))
+    Comment.objects.all().delete()
+    url = all_routes['detail']
     first_comment_count = Comment.objects.count()
     assert first_comment_count == 0
     response = author_client.post(url, data=FORM_DATA)
@@ -45,53 +44,72 @@ def test_can_add_comment_users(author, author_client, all_routes, news):
     assert new_comment.news == news
 
 
-def test_bad_words_and_warning_in_comment(not_author_client, all_routes, news):
+def test_bad_words_and_warning_in_comment(not_author_client, all_routes):
     """Тест, что комментарий с плохими словами не проходит валидацию."""
+    before_count = Comment.objects.count()
     FORM_BAD_WORDS['text'] = BAD_WORDS
-    url = reverse(all_routes[1], args=(news.pk,))
+    url = all_routes['detail']
     response = not_author_client.post(url, data=FORM_BAD_WORDS)
-    assert Comment.objects.count() == 0
+    after_count = Comment.objects.count()
+    assert before_count == after_count
     assert response.status_code == HTTPStatus.OK
     assert WARNING in response.context['form'].errors['text']
 
 
 def test_users_can_edit_comment(
-        author_client, all_routes, news, comment
+        author_client, all_routes, comment
 ):
     """Тест, авторы могут редактировать комментарии."""
-    url = reverse(all_routes[2], args=(news.pk,))
+    url = all_routes['edit']
     response = author_client.post(url, FORM_DATA)
-    redirect_url = reverse(all_routes[1], args=(news.pk,)) + '#comments'
+    redirect_url = all_routes['detail'] + '#comments'
     assertRedirects(response, redirect_url)
-    comment.refresh_from_db()
+    comment_from_db = Comment.objects.get(id=comment.id)
     assert comment.text == FORM_DATA['text']
-    assert comment.author == comment.author
-    assert comment.news == news
+    assert comment.author == comment_from_db.author
+    assert comment.news == comment_from_db.news
 
 
-def test_users_cant_edit_com(not_author_client, all_routes, news, comment):
+@pytest.mark.parametrize(
+    'url',
+    [
+        (pytest.lazy_fixture('redirect_edit_comment')),
+    ]
+)
+def test_users_cant_edit_com(not_author_client, url, comment):
     """Тест, юзеры не могут редактировать чужие комменты."""
-    url = reverse(all_routes[2], args=(comment.id,))
     response = not_author_client.post(url, FORM_DATA)
     assert response.status_code == HTTPStatus.NOT_FOUND
     comment_from_db = Comment.objects.get(id=comment.id)
     assert comment.text == comment_from_db.text
-    assert comment.author == comment.author
-    assert comment.news == news
+    assert comment.author == comment_from_db.author
+    assert comment.news == comment_from_db.news
 
 
-def test_users_cant_delete_com(not_author_client, all_routes, comment):
+@pytest.mark.parametrize(
+    'url',
+    [
+        (pytest.lazy_fixture('redirect_edit_comment')),
+    ]
+)
+def test_users_cant_delete_com(not_author_client, url):
     """Тест, юзеры не могут удалять чужие комменты."""
-    url = reverse(all_routes[3], args=(comment.id,))
+    before_count = Comment.objects.count()
     response = not_author_client.post(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert Comment.objects.count() == 1
+    assert Comment.objects.count() == before_count
 
 
-def test_authors_can_delete_com(author_client, all_routes, news, comment):
+@pytest.mark.parametrize(
+    'url',
+    [
+        (pytest.lazy_fixture('redirect_del_comment')),
+    ]
+)
+def test_authors_can_delete_com(author_client, url, all_routes):
     """Тест, авторы могут удалять свои комменты."""
-    url = reverse(all_routes[3], args=(comment.id,))
+    before_count = Comment.objects.count()
     response = author_client.post(url)
-    redirect_url = reverse(all_routes[1], args=(news.pk,)) + '#comments'
+    redirect_url = all_routes['detail'] + '#comments'
     assertRedirects(response, redirect_url)
-    assert Comment.objects.count() == 0
+    assert Comment.objects.count() == before_count - 1
