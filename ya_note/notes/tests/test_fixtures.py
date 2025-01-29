@@ -32,12 +32,12 @@ class BaseTestSetUp(TestCase):
             'edit': reverse('notes:edit', args=(cls.notes.slug,)),
             'delete': reverse('notes:delete', args=(cls.notes.slug,)),
         }
-        cls.auth_and_home_urls = (
-            (reverse('notes:home')),
-            (reverse('users:login')),
-            (reverse('users:logout')),
-            (reverse('users:signup')),
-        )
+        cls.auth_and_home_urls = {
+            'home': reverse('notes:home'),
+            'login': reverse('users:login'),
+            'logout': reverse('users:logout'),
+            'signup': reverse('users:signup'),
+        }
         cls.form_data = {
             'text': cls.NOTE_TEXT,
             'title': 'title',

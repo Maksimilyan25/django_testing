@@ -1,7 +1,6 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from django.urls import reverse
 
 from .test_fixtures import BaseTestSetUp
 
@@ -14,7 +13,7 @@ class TestRoutes(BaseTestSetUp):
 
     def test_pages(self):
         """Тест главной страницы и авторизации."""
-        for url in self.auth_and_home_urls:
+        for url in self.auth_and_home_urls.values():
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -26,9 +25,12 @@ class TestRoutes(BaseTestSetUp):
             (self.user_client, HTTPStatus.NOT_FOUND),
         )
         for client, status in users_status:
-            for name in ('notes:detail', 'notes:edit', 'notes:delete'):
-                with self.subTest(client=client, name=name):
-                    url = reverse(name, args=(self.notes.slug,))
+            for url in (
+                self.urls['detail'],
+                self.urls['edit'],
+                self.urls['delete']
+            ):
+                with self.subTest(client=client, name=url):
                     response = client.get(url)
                     self.assertEqual(response.status_code, status)
 
@@ -41,7 +43,7 @@ class TestRoutes(BaseTestSetUp):
 
     def test_redirect_anonymous_user(self):
         """Тест на редирект анонима."""
-        login_url = self.auth_and_home_urls[1]
+        login_url = self.auth_and_home_urls['login']
         for name, url in self.urls.items():
             with self.subTest(name=name):
                 response = self.client.get(url)

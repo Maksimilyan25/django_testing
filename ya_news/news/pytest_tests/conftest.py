@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from http import HTTPStatus
 
 
 import pytest
@@ -95,55 +94,55 @@ def routes_for_paginator():
 
 
 @pytest.fixture
-def all_routes(news):
+def all_routes(news, comment):
     """Фикстура всех адресов."""
     return {
         'home': reverse('news:home'),
         'detail': reverse('news:detail', args=(news.pk,)),
-        'edit': reverse('news:edit', args=(news.pk,)),
-        'delete': reverse('news:delete', args=(news.pk,)),
+        'edit': reverse('news:edit', args=(comment.id,)),
+        'delete': reverse('news:delete', args=(comment.id,)),
         'login': reverse('users:login'),
         'logout': reverse('users:logout'),
         'signup': reverse('users:signup'),
     }
 
 
-@pytest.fixture
-def anonymous_routes(news, comment):
-    """Возвращает список адресов для анонимного пользователя."""
-    return {
-        'news:home': (None, HTTPStatus.OK),
-        'users:login': (None, HTTPStatus.OK),
-        'users:logout': (None, HTTPStatus.OK),
-        'users:signup': (None, HTTPStatus.OK),
-        'news:detail': ([news.pk], HTTPStatus.OK),
-        'news:edit': ([comment.id], HTTPStatus.OK),
-        'news:delete': ([comment.id], HTTPStatus.OK),
-    }
+# @pytest.fixture
+# def anonymous_routes(news, comment):
+#     """Возвращает список адресов для анонимного пользователя."""
+#     return {
+#         'news:home': (None, HTTPStatus.OK),
+#         'users:login': (None, HTTPStatus.OK),
+#         'users:logout': (None, HTTPStatus.OK),
+#         'users:signup': (None, HTTPStatus.OK),
+#         'news:detail': ([news.pk], HTTPStatus.OK),
+#         'news:edit': ([comment.id], HTTPStatus.OK),
+#         'news:delete': ([comment.id], HTTPStatus.OK),
+#     }
 
 
-@pytest.fixture
-def client_routes(author_client, not_author_client, comment):
-    """Фикстура для маршрутов, клиентов и ожидаемых статусов."""
-    return (
-        ((reverse('news:edit', args=(comment.id,))),
-         author_client, HTTPStatus.OK),
-        ((reverse('news:delete', args=(comment.id,))),
-         author_client, HTTPStatus.OK),
-        ((reverse('news:edit', args=(comment.id,))),
-         not_author_client, HTTPStatus.NOT_FOUND),
-        ((reverse('news:delete', args=(comment.id,))),
-         not_author_client, HTTPStatus.NOT_FOUND),
-    )
+# @pytest.fixture
+# def client_routes(author_client, not_author_client, comment):
+#     """Фикстура для маршрутов, клиентов и ожидаемых статусов."""
+#     return (
+#         ((reverse('news:edit', args=(comment.id,))),
+#          author_client, HTTPStatus.OK),
+#         ((reverse('news:delete', args=(comment.id,))),
+#          author_client, HTTPStatus.OK),
+#         ((reverse('news:edit', args=(comment.id,))),
+#          not_author_client, HTTPStatus.NOT_FOUND),
+#         ((reverse('news:delete', args=(comment.id,))),
+#          not_author_client, HTTPStatus.NOT_FOUND),
+#     )
 
 
-@pytest.fixture
-def redirect_del_comment(comment):
-    url = reverse('news:delete', args=[comment.pk])
-    return url
+# @pytest.fixture
+# def redirect_del_comment(comment):
+#     url = reverse('news:delete', args=[comment.pk])
+#     return url
 
 
-@pytest.fixture
-def redirect_edit_comment(comment):
-    url = reverse('news:edit', args=[comment.pk])
-    return url
+# @pytest.fixture
+# def redirect_edit_comment(comment):
+#     url = reverse('news:edit', args=[comment.pk])
+#     return url

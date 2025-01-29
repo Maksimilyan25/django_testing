@@ -4,7 +4,7 @@ import pytest
 from pytest_django.asserts import assertRedirects
 
 from news.models import Comment
-from news.forms import WARNING, BAD_WORDS
+from news.forms import BAD_WORDS, WARNING
 
 
 FORM_DATA = {
@@ -70,14 +70,9 @@ def test_users_can_edit_comment(
     assert comment.news == comment_from_db.news
 
 
-@pytest.mark.parametrize(
-    'url',
-    [
-        (pytest.lazy_fixture('redirect_edit_comment')),
-    ]
-)
-def test_users_cant_edit_com(not_author_client, url, comment):
+def test_users_cant_edit_com(not_author_client, all_routes, comment):
     """Тест, юзеры не могут редактировать чужие комменты."""
+    url = all_routes['edit']
     response = not_author_client.post(url, FORM_DATA)
     assert response.status_code == HTTPStatus.NOT_FOUND
     comment_from_db = Comment.objects.get(id=comment.id)
@@ -86,28 +81,18 @@ def test_users_cant_edit_com(not_author_client, url, comment):
     assert comment.news == comment_from_db.news
 
 
-@pytest.mark.parametrize(
-    'url',
-    [
-        (pytest.lazy_fixture('redirect_edit_comment')),
-    ]
-)
-def test_users_cant_delete_com(not_author_client, url):
+def test_users_cant_delete_com(not_author_client, all_routes):
     """Тест, юзеры не могут удалять чужие комменты."""
+    url = all_routes['delete']
     before_count = Comment.objects.count()
     response = not_author_client.post(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert Comment.objects.count() == before_count
 
 
-@pytest.mark.parametrize(
-    'url',
-    [
-        (pytest.lazy_fixture('redirect_del_comment')),
-    ]
-)
-def test_authors_can_delete_com(author_client, url, all_routes):
+def test_authors_can_delete_com(author_client, all_routes):
     """Тест, авторы могут удалять свои комменты."""
+    url = all_routes['delete']
     before_count = Comment.objects.count()
     response = author_client.post(url)
     redirect_url = all_routes['detail'] + '#comments'

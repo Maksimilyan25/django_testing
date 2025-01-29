@@ -43,7 +43,7 @@ class TestNoteEditDelete(BaseTestSetUp):
         response = self.author_client.delete(self.urls['delete'])
         self.assertRedirects(response, self.urls['success'])
         after_count = Note.objects.count()
-        self.assertNotEqual(after_count, before_count)
+        self.assertEqual(after_count, before_count - 1)
 
     def test_user_cant_del_note(self):
         """тест, что читатель не может удалить заметку."""
